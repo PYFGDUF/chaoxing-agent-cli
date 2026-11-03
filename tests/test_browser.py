@@ -61,3 +61,19 @@ def test_question_page_limit(page):
     b.frame_with = lambda *_: page
     data = b.fetch('https://mooc1.chaoxing.com/work/view?workId=1', 1)
     assert data['complete'] is False
+
+
+def test_numeric_paginator_arrow(page):
+    page.set_content('<div class="pageDiv"><ul><li class="xl-prevPage xl-disabled"></li><li class="xl-active">1</li><li>2</li><li class="xl-nextPage"></li></ul></div><style>li {display:inline-block;width:20px;height:20px}</style>')
+    assert Browser.next_button(page).get_attribute('class') == 'xl-nextPage'
+    page.locator('.xl-nextPage').evaluate("el => el.classList.add('xl-disabled')")
+    assert Browser.next_button(page) is None
+
+
+def test_pagination_waits_through_empty_intermediate_state(page):
+    page.set_content('<div id="rows">old</div>')
+    b=Browser(None,timeout=2000)
+    b.page=page
+    page.evaluate("() => {setTimeout(() => document.querySelector('#rows').textContent='', 30);setTimeout(() => document.querySelector('#rows').textContent='new', 220)}")
+    b.wait_changed(page,lambda:page.locator('#rows').inner_text(),'old')
+    assert page.locator('#rows').inner_text()=='new'

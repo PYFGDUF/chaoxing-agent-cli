@@ -31,6 +31,12 @@ def rich(node, base: str) -> str:
         src = el.get("data-src") or el.get("src", "")
         alt = re.sub(r"[\[\]()\n]", "", el.get("alt", "图片"))
         el.replace_with(f" ![{alt}]({urljoin(base, src)}) " if src else "")
+    for el in clone.select('iframe[module="insertAttach"], iframe[objectid][filename]'):
+        title = el.get("filename") or "附件"
+        title = re.sub(r"[\[\]\n]", "", title)
+        # Embedded attachment pages read metadata from window.name; link to the
+        # source work page, where the platform supplies that context.
+        el.replace_with(f" [{title}]({base}) ")
     # Preserve preformatted code and block boundaries.
     for el in clone.select("br"):
         el.replace_with("\n")
@@ -44,13 +50,17 @@ def courses(html: str, base: str) -> list[dict]:
     root = soup(html)
     result = {}
     for card in root.select('[id^="course_"], .course-list li, #courseList li'):
-        a = card.select_one('h3 a[href], a[href*="stucoursemiddle"], a[href*="mycourse/stu"]')
+        a = card.select_one("h3 a[href]")
+        if a is None:
+            a = card.select_one('a[href*="stucoursemiddle"], a[href*="mycourse/stu"]')
         if a is None:
             continue
         url = urljoin(base, a.get("href", ""))
         if "stucoursemiddle" not in url and "mycourse/stu" not in url:
             continue
-        title = a.get("title") or a.get_text(" ", strip=True)
+        title_node = card.select_one(".course-name, h3")
+        title_node = title_node if title_node is not None else a
+        title = title_node.get("title") or title_node.get_text(" ", strip=True)
         teacher = card.select(".course-info p")
         item = {"id": identity(url, "course"), "title": title, "url": url,
                 "teacher": teacher[-1].get_text(" ", strip=True) if teacher else "",
@@ -110,16 +120,28 @@ def questions(html: str, base: str) -> list[dict]:
             student = "；".join(el.get("value", "") if el.name == "input" else el.get_text()
                                for el in node.select('textarea, input[type="text"], input:checked'))
         analysis = rich(node.select_one(".analysis, .answer-analysis, .analysisContent"), base)
-        qtype = next((t for t in ("多选题", "单选题", "判断题", "填空题", "简答题", "论述题", "计算题")
+        qtype = next((t for t in ("多选题", "单选题", "判断题", "填空题", "简答题", "论述题", "计算题", "编程题", "其它", "其他")
                       if t in title), "unknown")
         qid = node.get("data-questionid") or node.get("id") or node.get("data")
+        attachments = [{"title": a.get_text(" ", strip=True), "url": urljoin(base, a["href"]),
+                        "kind": "link"} for a in node.select('a[href]')
+                       if a["href"].startswith(("http", "/"))]
+        for el in node.select('iframe[module="insertAttach"], iframe[objectid][filename]'):
+            owner = "question"
+            if el.find_parent(class_="stuAnswerContent"):
+                owner = "student_answer"
+            elif el.find_parent(class_="rightAnswerContent"):
+                owner = "correct_answer"
+            attachments.append({"title": el.get("filename", "附件"),
+                                "url": base.split("#", 1)[0] + ("#" + str(qid) if qid else ""),
+                                "frame_url": urljoin(base, el.get("src", "")),
+                                "kind": "embedded_attachment", "owner": owner,
+                                "object_id": el.get("objectid"), "file_type": el.get("filetype")})
         result.append({"id": str(qid) if qid else None, "index": len(result) + 1,
                        "type": qtype, "title": title, "options": options,
                        "correct_answer": correct or None, "student_answer": student or None,
                        "analysis": analysis or None,
-                       "attachments": [{"title": a.get_text(" ", strip=True),
-                                        "url": urljoin(base, a["href"])}
-                                       for a in node.select('a[href]') if a["href"].startswith(("http", "/"))]})
+                       "attachments": attachments})
     return result
 
 

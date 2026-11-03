@@ -91,7 +91,7 @@ class Browser:
         total, pages, complete, reason = None, 0, False, "page_limit"
         while pages < max_pages:
             parsed = parsers.homeworks(frame.content(), frame.url)
-            signature = tuple((i["id"], i["url"]) for i in parsed["items"])
+            signature = tuple(i["id"] for i in parsed["items"])
             if signature in seen_pages:
                 reason = "pagination_stalled"
                 break
@@ -106,13 +106,13 @@ class Browser:
                 break
             if pages < max_pages:
                 nxt.click()
-                self.wait_changed(frame, lambda: tuple((i["id"], i["url"]) for i in parsers.homeworks(frame.content(), frame.url)["items"]), signature)
+                self.wait_changed(frame, lambda: tuple(i["id"] for i in parsers.homeworks(frame.content(), frame.url)["items"]), signature)
         return {"items": list(items.values()), "count": len(items), "reported_total": total,
                 "pages": pages, "complete": complete, "stop_reason": reason}
 
     @staticmethod
     def next_button(frame):
-        for selector in ('a:has-text("下一页")', 'button:has-text("下一页")', '.next', '[aria-label="下一页"]'):
+        for selector in ('a:has-text("下一页")', 'button:has-text("下一页")', '.next', '.xl-nextPage', '[aria-label="下一页"]'):
             for el in frame.locator(selector).all():
                 if el.is_visible() and el.is_enabled() and el.get_attribute("aria-disabled") != "true":
                     cls = el.get_attribute("class") or ""
@@ -122,10 +122,17 @@ class Browser:
 
     def wait_changed(self, frame, read, old):
         deadline = time.monotonic() + self.timeout / 1000
+        candidate, stable = None, 0
         while time.monotonic() < deadline:
             self.check_auth()
-            if read() != old:
-                return
+            current = read()
+            if current and current != old:
+                stable = stable + 1 if current == candidate else 0
+                candidate = current
+                if stable >= 2:
+                    return
+            else:
+                candidate, stable = None, 0
             self.page.wait_for_timeout(150)
         raise CliError("PAGINATION_STALLED", "翻页后内容未更新。", 4)
 

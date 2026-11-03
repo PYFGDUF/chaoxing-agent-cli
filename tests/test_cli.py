@@ -131,3 +131,22 @@ def test_legacy_encrypted_import(tmp_path):
     session = Session(tmp_path/'new')
     session.import_file(state_file,key_file)
     assert session.load()['cookies'][0]['value'] == 'synthetic'
+
+
+def test_course_cover_precedes_title_link():
+    html = '''<li id="course_1_2"><div class="course-cover"><a href="/visit/stucoursemiddle?courseid=1&clazzid=2"><img src="cover.png"></a></div><div class="course-info"><h3><a href="/visit/stucoursemiddle?courseid=1&clazzid=2"><span class="course-name" title="示例课程">示例课程</span></a></h3><p></p><p title="示例教师">示例教师</p></div></li>'''
+    course = parsers.courses(html, 'https://mooc1.chaoxing.com/')[0]
+    assert course['title'] == '示例课程'
+    assert course['teacher'] == '示例教师'
+
+
+def test_embedded_attachment_in_question_and_student_answer():
+    html = '''<div class="questionLi" id="q1"><h3 class="mark_name">1. (其它)<span class="qtContent"><iframe module="insertAttach" objectid="synthetic-question" filename="题目.docx" filetype="docx" src="/ananas/common-modules/attachment/insertCloud.html"></iframe></span></h3><dd class="stuAnswerContent"><iframe module="insertAttach" objectid="synthetic-answer" filename="解答.ipynb" filetype="ipynb" src="/ananas/common-modules/attachment/insertCloud.html"></iframe></dd></div>'''
+    q=parsers.questions(html,BASE)[0]
+    assert q['type'] == '其它'
+    assert '题目.docx' in q['title']
+    assert '解答.ipynb' in q['student_answer']
+    assert [a['owner'] for a in q['attachments']] == ['question','student_answer']
+    assert q['attachments'][1]['object_id'] == 'synthetic-answer'
+    assert q['attachments'][1]['file_type'] == 'ipynb'
+    assert q['correct_answer'] is None

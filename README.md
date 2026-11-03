@@ -78,7 +78,7 @@ xxt parse saved.html --kind questions --base-url https://mooc1.chaoxing.com/
 {"ok":false,"schema_version":1,"error":{"code":"AUTH_REQUIRED","message":"请运行 xxt auth login 或 xxt auth import。"}}
 ```
 
-题目字段：`id`、`index`、`type`、`title`、`options`、`correct_answer`、`student_answer`、`analysis`、`attachments`。页面未展示的内容返回 `null`；图片转为 Markdown URL，附件保留标题与 URL。JSON 与 Markdown 按需保存到本机。
+题目字段：`id`、`index`、`type`、`title`、`options`、`correct_answer`、`student_answer`、`analysis`、`attachments`。页面未展示的内容返回 `null`；图片转为 Markdown URL。普通附件链接保留标题与 URL；iframe 附件额外保留 `object_id`、`file_type`、`owner` 和 `frame_url`，其 `url` 指向原作业页面的对应题目。JSON 与 Markdown 按需保存到本机。
 
 作业按课程、班级、作业及作答标识生成稳定 ID，签名轮换保持 ID 稳定。同名作业保留独立记录，互评入口附加到 `peer_review`。`time_text` 保留网站的时间提示原文。
 
@@ -98,7 +98,7 @@ xxt parse saved.html --kind questions --base-url https://mooc1.chaoxing.com/
 
 ## 页面适配与数据
 
-目前适配个人空间课程卡片、课程“作业”iframe、`work/task` / `work/view`、`.questionLi` / `.singleQuesId` / `.TiMu` 等详情结构。作业入口可通过网站重定向进入详情；需手动开始或人工验证的页面返回错误供 Agent 处理。
+目前适配个人空间课程卡片、课程“作业”iframe、`work/task` / `work/view`、`.questionLi` / `.singleQuesId` / `.TiMu` 等详情结构，包括数字分页箭头和内嵌附件。作业入口可通过网站重定向进入详情；需手动开始或人工验证的页面返回错误供 Agent 处理。
 
 抓取流程仅执行页面导航、作业标签切换和下一页操作。标准答案与学生作答独立输出。时间提示、代码换行、图片及附件引用尽量保留。图片与附件下载可由后续 Agent 根据返回 URL 完成；链接有效期受平台登录态和签名影响。离线解析以 HTML 中已经保存的内容为准。
 
