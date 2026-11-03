@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chaoxing-agent-cli"
+version = "0.1.0"
+description = "Agent-friendly Chaoxing homework discovery and extraction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["playwright>=1.45,<2", "beautifulsoup4>=4.12,<5", "cryptography>=41"]
+
+[project.urls]
+Repository = "https://github.com/PYFGDUF/chaoxing-agent-cli"
+Issues = "https://github.com/PYFGDUF/chaoxing-agent-cli/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "build>=1"]
+
+[project.scripts]
+xxt = "xxt_cli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
